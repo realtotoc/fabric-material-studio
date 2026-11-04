@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: fabric-material-studio
+    runtime: docker
+    healthCheckPath: /healthz
+    envVars:
+      - key: AIHUBMIX_API_KEY
+        sync: false
+      - key: STUDIO_PASSWORD
+        sync: false
+      - key: STUDIO_USER
+        value: admin

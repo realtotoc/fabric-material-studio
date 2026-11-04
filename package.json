@@ -1,0 +1,16 @@
+{
+  "name": "fabric-material-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI furniture upholstery preview with AiHubMix",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "start": "node server/index.mjs",
+    "dev": "node --watch server/index.mjs",
+    "build": "node --check server/index.mjs && node --check server/ai.mjs && node --check public/app.js && node --check public/ai.js",
+    "test": "node scripts/test-ai.mjs && node scripts/test-server.mjs"
+  }
+}

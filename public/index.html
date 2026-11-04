@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>织间 · 家具换材质工作台</title>
+    <meta
+      name="description"
+      content="把喜欢的布料，放进真实的家。家具照片与布料的可视化搭配工作台。"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="./"
+        ><span class="logo">织</span><b>织间<span>FABRIC STUDIO</span></b></a
+      >
+      <nav>
+        <a class="active" href="#workspace">材质工作台</a
+        ><button id="aiSettings">AI 设置</button
+        ><button id="help">使用指南 ↗</button>
+      </nav>
+      <span class="local"><i></i> 本地预览 / AI 按需处理</span>
+    </header>
+    <main id="workspace">
+      <div class="intro">
+        <div>
+          <div class="eyebrow">MATERIAL EXPLORER / 材质探索</div>
+          <h1>同一件家具，<em>另一种可能。</em></h1>
+          <p>从一块布料开始，看见家的新模样。</p>
+        </div>
+        <button id="export" class="export">↓ 导出效果图</button>
+      </div>
+      <div class="workspace">
+        <aside class="controls">
+          <section>
+            <div class="section-title">
+              <span class="number">01</span>
+              <h2>选择家具</h2>
+              <span class="hint">FURNITURE</span>
+            </div>
+            <label class="upload" for="furniture"
+              ><span class="upload-icon">＋</span><b>上传家具照片</b
+              ><small>沙发 / 单椅 / 软床 / 其他家具</small
+              ><small>JPG、PNG、WebP · 最大 15 MB</small></label
+            ><input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              id="furniture"
+              hidden
+            />
+            <div class="demo-row">
+              <span id="imageName">当前：示例三人沙发（插画）</span
+              ><button id="demo">恢复示例</button>
+            </div>
+          </section>
+          <section>
+            <div class="section-title">
+              <span class="number">02</span>
+              <h2>挑选新材质</h2>
+              <span class="hint">MATERIAL</span>
+            </div>
+            <div class="material-tabs">
+              <button class="on" data-filter="all">全部</button
+              ><button data-filter="linen">棉麻</button
+              ><button data-filter="velvet">绒布</button
+              ><button data-filter="leather">皮革</button>
+            </div>
+            <div id="swatches" class="swatches"></div>
+            <div class="selected">
+              <div id="sample"></div>
+              <div>
+                <b id="matName">苔原绿 · 棉麻</b
+                ><small id="matCode">LINEN / L-03</small>
+              </div>
+              <span>已选择</span>
+            </div>
+            <label class="upload-material" for="fabric"
+              >＋ 上传布料照片 / 色卡 <span>↗</span></label
+            ><input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              id="fabric"
+              hidden
+            /><label class="color-row"
+              >或选择纯色 <input type="color" id="color" value="#687866"
+            /></label>
+          </section>
+          <section class="fine">
+            <div class="section-title">
+              <span class="number">03</span>
+              <h2>微调效果</h2>
+            </div>
+            <label
+              >纹理大小 <output id="scaleOut">100%</output
+              ><input
+                id="scale"
+                type="range"
+                min="30"
+                max="220"
+                value="100" /></label
+            ><label
+              >材质覆盖度 <output id="strengthOut">85%</output
+              ><input id="strength" type="range" min="0" max="100" value="85"
+            /></label>
+            <p class="subtle">保留原图的明暗。色卡照片建议只截取布料区域。</p>
+          </section>
+        </aside>
+        <div class="preview-column">
+          <div class="ai-panel">
+            <div class="ai-title">
+              <div>
+                <span class="eyebrow">AI MATERIAL STUDIO</span>
+                <h2>识别部件，一键换布。</h2>
+              </div>
+              <span class="ai-pill" id="aiConnection">未配置 Key</span>
+            </div>
+            <div class="sample-actions">
+              <button id="loadTestSamples" class="outline">
+                载入沙发与布料测试图
+              </button>
+            </div>
+            <div class="ai-actions">
+              <button id="analyze" class="outline">✧ 智能识别部件</button
+              ><select id="imageModel" aria-label="选择 AI 图片模型">
+                <option value="qwen-image-3.0">
+                  Qwen Image 3.0 · 日常预览
+                </option>
+                <option value="qwen-image-3.0-pro">
+                  Qwen Image 3.0 Pro · 精细预览
+                </option></select
+              ><button id="generate" class="primary">生成 AI 效果 ↗</button>
+            </div>
+            <div id="partsPanel" hidden>
+              <div class="parts-heading">
+                选择要换布的部分
+                <button id="selectAllParts">全选 / 取消</button>
+              </div>
+              <div id="partsList"></div>
+              <p class="subtle">
+                AI 轮廓是粗略建议，可用下方笔刷修正。保留木脚、金属及未选部分。
+              </p>
+            </div>
+            <label class="ai-preference"
+              >补充要求（可选）<input
+                id="aiInstruction"
+                maxlength="500"
+                placeholder="例如：只换坐垫，靠背保持原样；花纹不要太大"
+            /></label>
+            <div class="ai-meta">
+              <span id="estimate">单张约 $0.034 + 识别费</span
+              ><span>每次只生成 1 张 · 不自动重试</span>
+            </div>
+            <div id="aiStatus" role="status" aria-live="polite">
+              先上传家具和布料，再识别需要替换的部分。
+            </div>
+            <div id="taskRecovery" hidden>
+              <p id="taskLabel"></p>
+              <button id="resumeTask" class="outline">读取当前任务结果</button
+              ><button id="dismissTask">结束跟踪（不会取消上游任务）</button>
+            </div>
+            <p class="ai-disclosure">
+              点击识别或生成时，相关图片将经本站后端发送至 AiHubMix
+              及模型服务商处理并按量计费。AI 结果仍需核对家具结构与面料花纹。
+            </p>
+          </div>
+          <div class="preview-head">
+            <div>
+              <span class="live-dot"></span> 效果预览
+              <span class="badge" id="modeBadge">本地预览</span>
+            </div>
+            <div class="view-toggle">
+              <button data-view="result" class="on">换材质</button
+              ><button data-view="compare">左右对比</button
+              ><button data-view="original">原图</button>
+            </div>
+          </div>
+          <div class="canvas-wrap" id="canvasWrap">
+            <canvas
+              id="scene"
+              width="1000"
+              height="700"
+              aria-label="家具材质效果预览"
+            ></canvas
+            ><canvas
+              id="paint"
+              width="1000"
+              height="700"
+              aria-label="涂选家具替换区域"
+            ></canvas>
+            <div class="canvas-tag" id="canvasTag">苔原绿 · 棉麻</div>
+            <div class="scene-caption">
+              SOFT LIVING <span>探索材质与空间的关系</span>
+            </div>
+          </div>
+          <div class="compare-bar" id="compareBar" hidden>
+            <span>原图</span
+            ><input
+              aria-label="调整原图与效果图分界"
+              id="compare"
+              type="range"
+              value="50"
+            /><span>换材质</span>
+          </div>
+          <div class="tool-bar">
+            <div class="brush-tools">
+              <button id="brush">◌ 涂选区域</button
+              ><button id="erase" title="擦除已选区域">擦除</button
+              ><button id="undo">↶ 撤销</button
+              ><button id="clear">清空选区</button>
+            </div>
+            <label
+              >笔刷
+              <input id="brushSize" type="range" min="8" max="120" value="40"
+            /></label>
+          </div>
+          <div class="preview-note">
+            <span>✳</span>
+            <p id="instruction">
+              示例已选中沙发表面，点击左侧布料即可预览。上传自己的照片后，请先涂选需要换材质的区域。
+            </p>
+          </div>
+          <div class="scheme-head">
+            <h2>搭配灵感 <small>把喜欢的方案留下来</small></h2>
+            <button id="save">＋ 保存当前搭配</button>
+          </div>
+          <div id="schemes" class="schemes">
+            <div class="empty-schemes">
+              你的下一种灵感，从这里开始。<span
+                >保存后可随时切换 · 本次打开期间有效</span
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer>
+        <b>织间</b><span>让选材，看得见。</span>
+        <p>
+          AI 选材预览 · 实物颜色、纹理及花纹比例请以样布为准。价格核实于
+          2026-11-04，以 AiHubMix 账单为准。
+        </p>
+      </footer>
+    </main>
+    <div id="toast" role="status"></div>
+    <dialog id="guide">
+      <button id="closeGuide" class="close">×</button>
+      <div class="eyebrow">QUICK START</div>
+      <h2>让一块布料，找到它的位置。</h2>
+      <ol>
+        <li>
+          <b>上传家具</b>
+          <p>用光线均匀、轮廓清晰的正面或斜侧面照片。</p>
+        </li>
+        <li>
+          <b>涂选表面</b>
+          <p>点击「涂选区域」涂抹布面；用擦除修正边缘，用撤销退回上一步。</p>
+        </li>
+        <li>
+          <b>选择材质</b>
+          <p>
+            选择内置材质，或上传只包含布料的照片。完整色卡请先裁去文字和边框。
+          </p>
+        </li>
+        <li>
+          <b>对比并导出</b>
+          <p>调整纹理大小和覆盖度，左右对比后下载 PNG。</p>
+        </li>
+      </ol>
+      <p class="subtle">
+        本地预览无需联网。AI 模式会向 AiHubMix
+        发送家具图、布料图及选区参考图。识别轮廓是近似建议，需要时用笔刷修正。生成费用按调用计费，效果不保证等同实物。
+      </p>
+    </dialog>
+    <dialog id="settingsDialog">
+      <button id="closeSettings" class="close" aria-label="关闭 AI 设置">
+        ×
+      </button>
+      <div class="eyebrow">AIHUBMIX CONNECTION</div>
+      <h2>AI 服务设置</h2>
+      <p class="settings-description">
+        AI 使用后台配置的服务密钥，无需在网页填写 Key。
+      </p>
+      <label class="async-setting"
+        ><input id="asyncMode" type="checkbox" checked disabled />异步生成已启用
+        · 提交后自动查询结果</label
+      >
+      <p class="subtle" id="serverKeyStatus">正在检查后台 AI 服务配置。</p>
+      <div class="model-costs">
+        <b>当前模型与费用</b>
+        <p>
+          识别：Qwen3 VL Plus<br />输入 $0.137 / 百万 tokens，输出 $1.37 / 百万
+          tokens（≤32K 档）
+        </p>
+        <p>日常：Qwen Image 3.0<br />生成 $0.02535 / 张 + 输入 $0.00286 / 图</p>
+        <p>
+          精细：Qwen Image 3.0 Pro<br />1K 生成 $0.03572 / 张 + 输入 $0.00286 /
+          图
+        </p>
+        <small
+          >当前输入最多 3 图，每次输出 1 张。显示费用是估算，不含额外文本 token
+          或账户折扣，以账单为准。</small
+        ><a
+          href="https://aihubmix.com/model/qwen-image-3.0"
+          target="_blank"
+          rel="noopener noreferrer"
+          >查看官方定价 ↗</a
+        >
+      </div>
+    </dialog>
+    <script src="app.js"></script>
+    <script src="ai.js"></script>
+  </body>
+</html>
