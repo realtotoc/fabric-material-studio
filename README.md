@@ -2,7 +2,7 @@
 
 上传家具照片与目标布料/色卡，智能识别可替换部件，勾选或涂选区域，生成换材质效果。支持沙发、椅子、软床床头等。
 
-原生 Node.js，**无第三方运行依赖、无需前端构建**。API Key 仅存后端环境变量，前端无需填写密钥。
+原生 Node.js，**无第三方运行依赖、无需前端构建**（仅 Workers 部署使用 Wrangler 开发依赖）。API Key 仅存后端环境变量，前端无需填写密钥。
 
 ## 功能
 
@@ -26,6 +26,34 @@ npm start
 打开 http://127.0.0.1:4173 。点击「载入沙发与布料测试图」→「智能识别部件」→核对部件→「生成 AI 效果」。
 
 本地每次请求重新读取 `.dev.vars` 的 AIHUBMIX_API_KEY，保存后无需重启。该文件被 Git 忽略。
+
+## 部署到 Cloudflare Workers
+
+仓库已包含 `worker/index.mjs` 和 `wrangler.jsonc`。静态页面通过 `ASSETS` 绑定提供，AI API 在 Worker 内运行，异步任务由浏览器每 15 秒查询，无需在 Worker 内长时间等待生图。`run_worker_first: true` 确保网页、静态资源和 API 都先经过访问密码校验。
+
+### Cloudflare 控制台连接 GitHub
+
+1. Workers & Pages → Create application → 导入 GitHub 仓库。
+2. 选择本仓库与 `main` 分支，构建命令 `npm run build`，部署命令 `npx wrangler deploy`。
+3. 首次部署后，进入 Worker → Settings → Variables and Secrets，添加两个 **Secret**：
+   - `AIHUBMIX_API_KEY`：你的 AiHubMix Key。
+   - `STUDIO_PASSWORD`：网页访问密码。用户名默认 `admin`。
+4. 保存并部署，然后打开分配的 `workers.dev` 地址。未配置密码前会返回 503，不会开放 AI 调用。
+
+### 使用 Wrangler CLI
+
+```bash
+npm ci
+npx wrangler login
+npm run check:worker
+npm run deploy:worker
+npx wrangler secret put AIHUBMIX_API_KEY
+npx wrangler secret put STUDIO_PASSWORD
+```
+
+密钥只填写到 Wrangler 的交互提示中，不写入 `wrangler.jsonc`。`secret put` 会发布更新。后续代码更新运行 `npm run deploy:worker`。
+
+本地 Worker 预览：在 `.dev.vars` 配置密钥及 `STUDIO_PASSWORD`，运行 `npm run dev:worker`，打开 http://127.0.0.1:8787 。原本的 `npm start` 本地 Node 模式仍可用。
 
 ## 部署到 Render
 

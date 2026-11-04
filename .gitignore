@@ -8,3 +8,6 @@ output/
 outputs/
 *.log
 .DS_Store
+
+.wrangler/
+.wrangler-output/
