@@ -3,6 +3,7 @@ import {
   handleApi,
   parseParts,
   normalizePolygon,
+  generationSize,
   BASE,
 } from "../server/ai.mjs";
 const image = "data:image/png;base64,iVBORw0KGgo=";
@@ -63,6 +64,10 @@ r = await handleApi(
     image,
     material: image,
     guide: image,
+    guideType: "binary",
+    materialColor: "#7b4a2d",
+    width: 1080,
+    height: 1440,
     model: "qwen-image-3.0",
     parts: [{ label: "靠背", description: "backrest" }],
   }),
@@ -76,7 +81,9 @@ assert.equal(calls[0].body.images.length, 3);
 assert.equal(calls[0].body.n, 1);
 assert.equal(calls[0].body.async, true);
 assert.match(calls[0].body.prompt, /靠背/);
-assert.match(calls[0].body.prompt, /NEVER part of the output color/);
+assert.match(calls[0].body.prompt, /BLACK AND WHITE REGION MASK/);
+assert.match(calls[0].body.prompt, /#7b4a2d/);
+assert.equal(calls[0].body.size, "750x1000");
 assert.equal(calls[0].body.mask, undefined);
 assert.equal(calls[0].init.headers.Authorization, "Bearer test-server-secret");
 let retries = 0;
@@ -204,3 +211,8 @@ r = await handleApi(
 );
 assert.equal(r.status, 200);
 assert.equal((await r.json()).error.code, "upstream_rejected");
+
+assert.equal(generationSize(1080, 1440), "750x1000");
+assert.equal(generationSize(1500, 1050), "1000x700");
+assert.equal(generationSize(undefined, undefined), "1000x700");
+assert.throws(() => generationSize(100, 2000));

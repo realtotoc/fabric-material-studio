@@ -1,5 +1,5 @@
-const $ = (s) => document.querySelector(s),
-  W = 1000,
+const $ = (s) => document.querySelector(s);
+let W = 1000,
   H = 700;
 const scene = $("#scene"),
   ctx = scene.getContext("2d"),
@@ -21,6 +21,20 @@ const bc = base.getContext("2d"),
   rc = result.getContext("2d"),
   tc = tex.getContext("2d"),
   ic = tint.getContext("2d");
+function resizeScene(width, height) {
+  W = Math.max(1, Math.round(width));
+  H = Math.max(1, Math.round(height));
+  for (const canvas of [scene, paint, base, mask, result, tex, tint]) {
+    canvas.width = W;
+    canvas.height = H;
+  }
+  $("#canvasWrap").style.aspectRatio = W + " / " + H;
+}
+function setFurnitureImage(im) {
+  const scale = Math.min(1, 1400 / Math.max(im.width, im.height));
+  resizeScene(im.width * scale, im.height * scale);
+  bc.drawImage(im, 0, 0, W, H);
+}
 const mats = [
   ["燕麦白", "#c7bc9e", "linen", "L-01"],
   ["砂岩米", "#b8a182", "linen", "L-02"],
@@ -82,6 +96,7 @@ function sofaPiece(x, y, w, h, r, a, b) {
   bc.stroke();
 }
 function demo() {
+  resizeScene(1000, 700);
   aiCanvas = null;
   window.resetAISelection?.();
   isDemo = true;
@@ -278,7 +293,9 @@ function drawView() {
     ctx.fillText("↔", x, H / 2 + 6);
   }
   $("#canvasTag").textContent =
-    view === "original" ? "原始家具" : material.name;
+    view === "original"
+      ? "原始家具"
+      : (aiCanvas ? "AI 生成 · " : "本地预览 · ") + material.name;
 }
 function drawMask() {
   pc.clearRect(0, 0, W, H);
@@ -467,16 +484,7 @@ $("#furniture").onchange = (e) =>
     isDemo = false;
     history = [];
     maskPresent = false;
-    bc.fillStyle = "#e9e7df";
-    bc.fillRect(0, 0, W, H);
-    let k = Math.min(W / im.width, H / im.height);
-    bc.drawImage(
-      im,
-      (W - im.width * k) / 2,
-      (H - im.height * k) / 2,
-      im.width * k,
-      im.height * k,
-    );
+    setFurnitureImage(im);
     mc.clearRect(0, 0, W, H);
     $("#imageName").textContent = "当前：" + name;
     $("#instruction").textContent =
@@ -555,6 +563,7 @@ function drawSchemes() {
     apply.className = "apply";
     apply.textContent = s.material.name;
     apply.onclick = () => {
+      resizeScene(s.base.width, s.base.height);
       bc.clearRect(0, 0, W, H);
       bc.drawImage(s.base, 0, 0);
       mc.clearRect(0, 0, W, H);

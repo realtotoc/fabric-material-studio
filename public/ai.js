@@ -57,9 +57,28 @@ async function callAI(path, payload) {
     try {
       d = await r.json();
     } catch {}
-    throw new Error(d?.error || "请求失败，请检查网络或 AiHubMix 控制台。");
+    const error = new Error(
+      d?.error || "请求失败，请检查网络或 AiHubMix 控制台。",
+    );
+    error.retryable = [502, 503, 504].includes(r.status);
+    throw error;
   }
   return path === "result" ? r.blob() : r.json();
+}
+async function readTask(id) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await callAI("task", { id });
+    } catch (error) {
+      const transient =
+        error.retryable ||
+        error.name === "TimeoutError" ||
+        error.message === "Failed to fetch";
+      if (!transient || attempt === 2) throw error;
+      aiStatus("任务已提交，正在重新读取状态（不会重复生成）…");
+      await new Promise((resolve) => setTimeout(resolve, 2000 * (attempt + 1)));
+    }
+  }
 }
 function friendlyError(e) {
   return e.name === "TimeoutError"
@@ -105,6 +124,7 @@ function applyParts() {
   maskPresent = aiParts.some((p) => p.selected);
   setTool("brush");
   render(false);
+  if (!aiBusy) aiStatus("选区已更新，当前为本地预览。请生成新的 AI 效果。");
 }
 function showParts() {
   $("#partsPanel").hidden = false;
@@ -182,16 +202,11 @@ function materialReference() {
 }
 function guideReference() {
   const c = layer(),
-    g = c.getContext("2d"),
-    overlay = layer(),
-    o = overlay.getContext("2d");
-  g.drawImage(base, 0, 0);
-  o.drawImage(mask, 0, 0);
-  o.globalCompositeOperation = "source-in";
-  o.fillStyle = "#ff242477";
-  o.fillRect(0, 0, W, H);
-  g.drawImage(overlay, 0, 0);
-  return imageData(c);
+    g = c.getContext("2d");
+  g.fillStyle = "#000";
+  g.fillRect(0, 0, W, H);
+  g.drawImage(mask, 0, 0);
+  return c.toDataURL("image/png");
 }
 function recovery() {
   const visible = !!pendingTask;
@@ -237,7 +252,7 @@ async function showTaskResult(task) {
     setView("result");
     render(false);
     aiStatus(
-      "AI 换材质完成。请用「左右对比」检查家具结构、边缘和面料花纹，再导出或保存搭配。",
+      "AI 图片已返回。请核对目标布料颜色和织纹；任务完成不代表材质一定匹配，可用「左右对比」检查。",
     );
     pendingTask = null;
     recovery();
@@ -253,7 +268,7 @@ async function pollTask() {
       "AI 正在生成… 已等待约 " + i * 15 + " 秒。任务编号：" + pendingTask.id,
     );
     await new Promise((r) => setTimeout(r, 15000));
-    pendingTask = await callAI("task", { id: pendingTask.id });
+    pendingTask = await readTask(pendingTask.id);
     recovery();
   }
   if (pendingTask && (await showTaskResult(pendingTask))) return;
@@ -282,6 +297,10 @@ async function generate() {
           ? " The hand-corrected region guide takes precedence over part descriptions."
           : ""),
       materialName: material.name,
+      materialColor: material.color,
+      width: W,
+      height: H,
+      guideType: "binary",
       async: true,
     };
     pendingTask = await callAI("generate", snapshot);
@@ -308,8 +327,9 @@ $("#closeSettings").onclick = () => $("#settingsDialog").close();
 $("#resumeTask").onclick = async () => {
   if (aiBusy || !pendingTask || !needKey()) return;
   setBusy(true);
+  aiStatus("正在读取已有任务结果，不会重复生成…");
   try {
-    pendingTask = await callAI("task", { id: pendingTask.id });
+    pendingTask = await readTask(pendingTask.id);
     recovery();
     await pollTask();
   } catch (e) {
@@ -352,17 +372,7 @@ $("#loadTestSamples").onclick = async () => {
     resetAISelection();
     history = [];
     isDemo = false;
-    bc.clearRect(0, 0, W, H);
-    bc.fillStyle = "#e9e7df";
-    bc.fillRect(0, 0, W, H);
-    const k = Math.min(W / sofa.width, H / sofa.height);
-    bc.drawImage(
-      sofa,
-      (W - sofa.width * k) / 2,
-      (H - sofa.height * k) / 2,
-      sofa.width * k,
-      sofa.height * k,
-    );
+    setFurnitureImage(sofa);
     mc.clearRect(0, 0, W, H);
     maskPresent = false;
     $("#imageName").textContent = "当前：米白三人沙发（AI 测试图）";
