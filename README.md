@@ -113,7 +113,7 @@ Seedream 5.0 Pro 使用统一异步图片接口及 **带版本号的模型 ID `d
 
 Seedream 同样支持智能整图/严格选区两种展示方式，输出约 1.5MP，双参考图估价 $0.04852/次，另计识图费用，以实际账单为准。原 Qwen 生图模型 ID 仅保留兼容旧客户端。
 
-结构保留提示词优先锁定拉扣/凹陷数量、逐行排列、非规则间距、每条缝线、拼接分区和床框轮廓，禁止重新打光、规则化拉扣或重做菱形绗缝。识图返回结构观察并随编辑请求传递；不清楚的数量不猜测。提示词降低结构漂移风险，无法保证逐像素或逐拉扣一致。
+结构保留提示词优先锁定拉扣/凹陷数量、逐行排列、非规则间距、每条缝线、拼接分区和床框轮廓，禁止重新打光、规则化拉扣或重做菱形绗缝。便宜识图只提供部件和保护区域，不将其自动推测的拉扣数量或规则网格传给编辑模型；拉扣布局以编辑模型直接观察原图为准。提示词降低结构漂移风险，无法保证逐像素或逐拉扣一致。
 
 [图片接口文档](https://docs.aihubmix.com/cn/api/aihubmix-image-generation) · [Nano Banana Pro](https://aihubmix.com/model/gemini-3-pro-image) · [Seedream 5.0 Pro 版本](https://aihubmix.com/model/doubao-seedream-5-0-pro-260628) · [Image 2.5 Flare](https://aihubmix.com/model/gpt-image-2.5-flare) · [Qwen3 VL Plus](https://aihubmix.com/model/qwen3-vl-plus)
 

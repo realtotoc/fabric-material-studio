@@ -337,11 +337,10 @@ for (const model of [SEEDREAM_MODEL, "doubao-seedream-5.0-pro"]) {
     assert.ok(w*h>=921600 && w*h<2360000);
   }
 }
-const parsedStructure = parseParts(JSON.stringify({parts:[], structure_notes:"Uneven staggered tufts; exact count uncertain."}));
-assert.match(parsedStructure.structureNotes, /exact count uncertain/);
 for(const model of ["gemini-3-pro-image",SEEDREAM_MODEL,"gpt-image-2.5-flare"]){
   const prompt = editPrompt({model,editMode:"semantic"});
   assert.match(prompt,/one-for-one/);
+  assert.match(prompt,/Disregard guessed button counts/);
   assert.match(prompt,/Do not regularize an irregular layout/);
   assert.ok(!prompt.includes("Re-render highlights"));
 }

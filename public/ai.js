@@ -2,7 +2,6 @@ import { blendMaskedPixels } from "./composite.js";
 let serverConfigured = false,
   aiParts = [],
   aiProtected = [],
-  structureNotes = "",
   pendingContext = null,
   pendingTask = null,
   aiBusy = false,
@@ -111,7 +110,6 @@ function friendlyError(e) {
 window.resetAISelection = () => {
   aiParts = [];
   aiProtected = [];
-  structureNotes = "";
   if ($("#protectedAreas")) $("#protectedAreas").hidden = true;
   selectionEdited = false;
   if ($("#partsPanel")) {
@@ -233,7 +231,6 @@ async function analyze() {
       image: imageData(base),
       instruction: $("#aiInstruction").value,
     });
-    structureNotes = data.structureNotes || "";
     aiParts = data.parts.map((p) => ({ ...p, selected: true }));
     aiProtected = (data.protectedAreas || []).map((p) => ({
       ...p,
@@ -403,7 +400,6 @@ async function generate() {
       material: materialReference(),
       guide: guideReference(),
       editMask: editMaskReference(),
-      structureNotes,
       protectedAreas: aiProtected.filter((p) => p.selected),
       model: $("#imageModel").value,
       editMode,
