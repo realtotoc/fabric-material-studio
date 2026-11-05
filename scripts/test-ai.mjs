@@ -5,6 +5,7 @@ import {
   normalizePolygon,
   generationSize,
   modelSize,
+  modelAspectRatio,
   BASE,
 } from "../server/ai.mjs";
 const image = "data:image/png;base64,iVBORw0KGgo=";
@@ -282,3 +283,31 @@ for (const id of ["doubao-seedream-5.0-pro", "gpt-image-2.5-flare"]) {
   assert.equal(h % 16, 0);
   assert.ok(w * h < 2360000);
 }
+
+// Gemini's unified image endpoint uses resolution/aspect_ratio, not size/output_format/mask.
+assert.equal(modelAspectRatio(958, 1278), "3:4");
+assert.equal(modelAspectRatio(1800, 1000), "16:9");
+for (const editMode of ["semantic", "strict"]) {
+  calls = [];
+  r = await handleApi(req("generate", {
+    model: "gemini-3-pro-image", image, material: image, guide: image,
+    editMask: image, width: 958, height: 1278, editMode, guideType: "binary",
+    parts: [{label: "床头", description: "blue upholstered headboard"}],
+    protectedAreas: protectedResult.protectedAreas,
+  }), ENV, mock);
+  assert.equal(r.status, 200);
+  const payload = calls[0].body;
+  assert.equal(payload.aspect_ratio, "3:4");
+  assert.equal(payload.resolution, "2K");
+  for (const field of ["size", "output_format", "response_format", "mask", "extra"])
+    assert.equal(payload[field], undefined);
+  assert.equal(payload.async, true);
+  assert.match(payload.prompt, /two solid black opaque panels/);
+  assert.equal(payload.images.length, editMode === "semantic" ? 2 : 3);
+  if (editMode === "semantic") {
+    assert.match(payload.prompt, /COMPLETE visible fabric surfaces/);
+    assert.match(payload.prompt, /Retain all original tuft buttons/);
+    assert.ok(!payload.prompt.includes("Image 3"));
+  } else assert.match(payload.prompt, /BLACK AND WHITE REGION MASK/);
+}
+console.log("Nano Banana Pro checks passed: exact endpoint fields, semantic vs strict references, 2K resolution, protected structure prompt.");

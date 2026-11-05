@@ -123,6 +123,9 @@
             <div class="ai-actions">
               <button id="analyze" class="outline">✧ 智能识别部件</button
               ><select id="imageModel" aria-label="选择 AI 图片模型">
+                <option value="gemini-3-pro-image">
+                  Nano Banana Pro · 精细换布
+                </option>
                 <option value="gpt-image-2.5-flare">
                   GPT Image 2.5 Flare · 蒙版编辑
                 </option>
@@ -131,6 +134,15 @@
                 </option></select
               ><button id="generate" class="primary">生成 AI 效果 ↗</button>
             </div>
+            <div id="nanoEditOptions">
+              <label class="ai-preference">编辑方式
+                <select id="editMode">
+                  <option value="semantic">智能整图编辑 · 优先自然连贯</option>
+                  <option value="strict">严格选区合成 · 保留选区外原图</option>
+                </select>
+              </label>
+              <p id="editModeHint" class="subtle"></p>
+            </div>
             <div id="partsPanel" hidden>
               <div class="parts-heading">
                 选择要换布的部分
@@ -138,7 +150,7 @@
               </div>
               <div id="partsList"></div>
               <div id="protectedAreas" hidden>
-                <div class="parts-heading">保护区域 · 保留原图</div>
+                <div class="parts-heading">保护区域 · 请核对边界</div>
                 <div id="protectedList"></div>
               </div>
               <p class="subtle">
@@ -152,7 +164,7 @@
                 placeholder="例如：只换坐垫，靠背保持原样；花纹不要太大"
             /></label>
             <div class="ai-meta">
-              <span id="estimate">单张约 $0.034 + 识别费</span
+              <span id="estimate">Nano Banana Pro · 按图像 token 计费</span
               ><span>每次只生成 1 张 · 不自动重试</span>
             </div>
             <div id="aiStatus" role="status" aria-live="polite">
@@ -295,7 +307,7 @@
           识别：Qwen3 VL Plus<br />输入 $0.137 / 百万 tokens，输出 $1.37 / 百万
           tokens（≤32K 档）
         </p>
-        <p>Seedream 5.0 Pro<br />≤2.36MP 生成 $0.0471/张 + 输入 $0.00286/图</p>
+        <p>Nano Banana Pro（2K）<br />输入 $2 / 百万 tokens，输出图像 $120 / 百万 tokens；文本输出另计。</p>
         <p>
           GPT Image 2.5 Flare（medium）<br />图片约
           $0.041–0.053/张，另计输入图和文本 token
@@ -304,7 +316,7 @@
           >当前输入最多 3 图，每次输出 1 张。显示费用是估算，不含额外文本 token
           或账户折扣，以账单为准。</small
         ><a
-          href="https://aihubmix.com/model/doubao-seedream-5.0-pro"
+          href="https://aihubmix.com/model/gemini-3-pro-image"
           target="_blank"
           rel="noopener noreferrer"
           >查看官方定价 ↗</a

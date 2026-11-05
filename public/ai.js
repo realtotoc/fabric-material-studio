@@ -11,12 +11,28 @@ const aiStatus = (message, error = false) => {
   $("#aiStatus").classList.toggle("error", error);
 };
 const imageData = (c) => c.toDataURL("image/jpeg", 0.9);
+function semanticEdit() {
+  return (
+    $("#imageModel").value === "gemini-3-pro-image" &&
+    $("#editMode").value !== "strict"
+  );
+}
+function updateEditMode() {
+  const nano = $("#imageModel").value === "gemini-3-pro-image";
+  $("#nanoEditOptions").hidden = !nano;
+  $("#editModeHint").textContent = semanticEdit()
+    ? "按所选部件完整换布，减少漏色与拼接边。保护区域由 AI 遵照保留，生成后请核对床板、边框和背景。手工涂选需切换严格模式。"
+    : "只合成选区内像素，保护区域保留原图。请修正选区边界；漏选或生成偏移仍可能留下旧色与接缝。";
+}
 function updateEstimate() {
   const m = $("#imageModel").value;
   $("#estimate").textContent =
-    m === "gpt-image-2.5-flare"
+    m === "gemini-3-pro-image"
+      ? "Nano Banana Pro · 2K · 按图像 token 计费"
+      : m === "gpt-image-2.5-flare"
       ? "Image 2.5 medium 约 $0.041–0.053 + 输入 token"
       : "Seedream 单张约 $0.056 + 识别及文本费";
+  updateEditMode();
 }
 function updateConnection() {
   $("#aiConnection").textContent = serverConfigured
@@ -106,7 +122,7 @@ window.resetAISelection = () => {
 window.aiSelectionChanged = () => {
   selectionEdited = true;
   if (!aiBusy)
-    aiStatus("选区已手动修正；生成时以当前选区为准，并扣除锁定的保护区域。");
+    aiStatus("选区已手动修正。严格模式按当前选区生成；Nano Banana 智能模式按所选部件完整换布。");
 };
 window.aiMaterialChanged = () => {
   if (!aiBusy)
@@ -242,7 +258,7 @@ async function analyze() {
   }
 }
 function hasMask() {
-  const d = mc.getImageData(0, 0, W, H).data;
+  const d = effectiveMask().getContext("2d").getImageData(0, 0, W, H).data;
   for (let i = 3; i < d.length; i += 4) if (d[i] > 0) return true;
   return false;
 }
@@ -322,15 +338,19 @@ async function showTaskResult(task) {
     const a = aiCanvas.getContext("2d");
     const original = pendingContext?.base || base;
     const selected = pendingContext?.mask || effectiveMask();
-    const generated = layer(),
-      g = generated.getContext("2d");
-    g.drawImage(im, 0, 0, W, H);
-    const pixels = blendMaskedPixels(
-      original.getContext("2d").getImageData(0, 0, W, H).data,
-      g.getImageData(0, 0, W, H).data,
-      selected.getContext("2d").getImageData(0, 0, W, H).data,
-    );
-    a.putImageData(new ImageData(pixels, W, H), 0, 0);
+    if (pendingContext?.editMode === "semantic") {
+      a.drawImage(im, 0, 0, W, H);
+    } else {
+      const generated = layer(),
+        g = generated.getContext("2d");
+      g.drawImage(im, 0, 0, W, H);
+      const pixels = blendMaskedPixels(
+        original.getContext("2d").getImageData(0, 0, W, H).data,
+        g.getImageData(0, 0, W, H).data,
+        selected.getContext("2d").getImageData(0, 0, W, H).data,
+      );
+      a.putImageData(new ImageData(pixels, W, H), 0, 0);
+    }
     setTool("");
     setView("result");
     render(false);
@@ -363,13 +383,18 @@ async function generate() {
   if (aiBusy || !needKey()) return;
   if (pendingTask)
     return aiStatus("已有待完成任务，请读取当前结果，勿重复生成。", true);
-  if (!hasMask())
+  if (semanticEdit() && !aiParts.some((p) => p.selected))
+    return aiStatus("智能模式请先识别并勾选换布部件；手工涂选请使用严格选区合成。", true);
+  if (!semanticEdit() && !hasMask())
     return aiStatus("请先智能识别并勾选部件，或手动涂选要换布的区域。", true);
   setBusy(true);
   setTool("");
   aiStatus("正在生成 AI 换材质效果… 通常需要等待，请不要重复点击。");
   try {
-    pendingContext = { base: cloneCanvas(base), mask: effectiveMask() };
+    const editMode = semanticEdit() ? "semantic" : "strict";
+    pendingContext = {
+      base: cloneCanvas(base), mask: effectiveMask(), editMode,
+    };
     const snapshot = {
       image: imageData(base),
       material: materialReference(),
@@ -377,10 +402,11 @@ async function generate() {
       editMask: editMaskReference(),
       protectedAreas: aiProtected.filter((p) => p.selected),
       model: $("#imageModel").value,
+      editMode,
       parts: aiParts.filter((p) => p.selected),
       instruction:
         $("#aiInstruction").value +
-        (selectionEdited
+        (selectionEdited && editMode === "strict"
           ? " The hand-corrected region guide takes precedence over part descriptions."
           : ""),
       materialName: material.name,
@@ -403,6 +429,7 @@ async function generate() {
 $("#analyze").onclick = analyze;
 $("#generate").onclick = generate;
 $("#imageModel").onchange = updateEstimate;
+$("#editMode").onchange = updateEditMode;
 $("#selectAllParts").onclick = () => {
   const next = !aiParts.every((p) => p.selected);
   aiParts.forEach((p) => (p.selected = next));

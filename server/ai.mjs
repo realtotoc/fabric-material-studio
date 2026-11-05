@@ -1,5 +1,9 @@
 export const BASE = "https://aihubmix.com";
 export const MODELS = {
+  "gemini-3-pro-image": {
+    label: "Nano Banana Pro · 精细换布",
+    output: null,
+  },
   "doubao-seedream-5.0-pro": {
     label: "Seedream 5.0 Pro · 图片编辑",
     output: 0.0471,
@@ -178,7 +182,9 @@ export function editPrompt(b) {
         .join("; ")
     : "";
   const regionGuide =
-    b.model === "gpt-image-2.5-flare"
+    b.model === "gemini-3-pro-image" && b.editMode !== "strict"
+      ? "Use semantic editing: replace the COMPLETE visible fabric surfaces of the named components, including thin edges, tucked borders and shaded portions. There is no pixel mask. Do not leave patches of the original cloth color. Retain all original tuft buttons, their count and exact positions, seams, piping, thickness, contours and perspective; change only the material appearance."
+      : b.model === "gpt-image-2.5-flare"
       ? "The attached edit MASK is transparent where editing is allowed and opaque where the ORIGINAL must be preserved. Image 1 is the base and image 2 the material reference."
       : b.guide
         ? b.guideType === "binary"
@@ -211,6 +217,17 @@ export function modelSize(model, width, height) {
   return (
     Math.ceil((w * scale) / 16) * 16 + "x" + Math.ceil((h * scale) / 16) * 16
   );
+}
+export function modelAspectRatio(width, height) {
+  const ratio = (Number(width) || 1000) / (Number(height) || 700);
+  const choices = ["1:1", "3:4", "4:3", "2:3", "3:2", "4:5", "5:4", "9:16", "16:9", "21:9"];
+  return choices.reduce((best, value) => {
+    const distance = (v) => {
+      const [w, h] = v.split(":").map(Number);
+      return Math.abs(Math.log(ratio / (w / h)));
+    };
+    return distance(value) < distance(best) ? value : best;
+  });
 }
 function taskSummary(d) {
   if (!d.id || typeof d.status !== "string")
@@ -323,7 +340,9 @@ export async function handleApi(request, env = {}, fetcher = fetch) {
     if (path === "/api/generate") {
       if (!MODELS[b.model]) throw new Problem("请选择支持的图片模型。");
       const images = [image(b.image), image(b.material)];
-      if (b.guide && b.model !== "gpt-image-2.5-flare")
+      const nano = b.model === "gemini-3-pro-image";
+      const semantic = nano && b.editMode !== "strict";
+      if (b.guide && b.model !== "gpt-image-2.5-flare" && !semantic)
         images.push(image(b.guide));
       const nativeMask =
         b.model === "gpt-image-2.5-flare" && b.editMask
@@ -342,10 +361,11 @@ export async function handleApi(request, env = {}, fetcher = fetch) {
           prompt: editPrompt(b),
           images,
           n: 1,
-          size: modelSize(b.model, b.width, b.height),
+          ...(nano
+            ? { aspect_ratio: modelAspectRatio(b.width, b.height), resolution: "2K" }
+            : { size: modelSize(b.model, b.width, b.height), output_format: "png" }),
           ...(nativeMask ? { mask: nativeMask } : {}),
           ...(b.model.startsWith("qwen-") ? { response_format: "url" } : {}),
-          output_format: "png",
           async: true,
           ...(b.model === "gpt-image-2.5-flare"
             ? { extra: { quality: "medium" } }

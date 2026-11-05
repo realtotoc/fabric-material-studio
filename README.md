@@ -8,7 +8,7 @@
 
 - 家具图与布料图上传，保留照片原始比例，内置 AI 生成的测试素材。
 - Qwen3 VL Plus 智能识别部件及建议选区，支持画笔修正、擦除与撤销。
-- GPT Image 2.5 Flare 蒙版图片编辑，明确替换原布颜色，支持深色家具换为目标面料色。
+- Nano Banana Pro 智能图片编辑及 GPT Image 2.5 Flare 蒙版编辑，明确替换原布颜色，支持深色家具换为目标面料色。
 - 异步任务提交一次，每 15 秒查询状态，支持继续读取现有任务。
 - 原图左右对比、PNG 导出和当前页面会话内的方案保存。
 - 无需调用 AI 的本地材质叠加预览。
@@ -97,13 +97,20 @@ docker run --rm -p 10000:10000 --env-file /path/to/private-runtime.env fabric-ma
 | 用途 | 模型 | 标价 |
 | --- | --- | --- |
 | 识图 | `qwen3-vl-plus` | ≤32K 输入 $0.137/M、输出 $1.37/M tokens |
-| 换布编辑 | `gpt-image-2.5-flare` | medium 图片约 $0.041–0.053/张，另计输入 token |
+| 精细换布 | `gemini-3-pro-image` | 输入 $2/M tokens、输出图像 $120/M tokens，文本输出另计 |
+| 蒙版换布 | `gpt-image-2.5-flare` | medium 图片约 $0.041–0.053/张，另计输入 token |
 
-默认使用 Image 2.5 Flare，原图和布料作为两张参考，另外发送透明 PNG 编辑蒙版。输出尺寸按 16 的倍数对齐。
+默认使用 **Nano Banana Pro (`gemini-3-pro-image`)**，2K 分辨率，按最接近原图的受支持比例生成。
+
+- 智能整图编辑：原图和布料两张参考，依据所选部件完整换布，直接展示生成图，避免粗略多边形裁切造成漏色和接缝。保护区域仅作为文字约束，无法保证原图像素不变，仍需核对家具、床板和背景。
+- 严格选区合成：增加黑白区域参考，结果仅合成进有效选区，选区外及保护区保留原图像素。边界漏选或生成位移仍会造成残留与拼接，适合手工修正选区后使用。
+- Image 2.5 Flare：继续使用原图、布料和透明 PNG 编辑蒙版，并严格按选区合成。输出尺寸按 16 的倍数对齐。
+
+Nano Banana Pro 根据图像和文本 token 计费，页面不承诺固定单张价格。
 
 Seedream 5.0 Pro 的适配代码保留，但当前统一接口实测返回 `model_not_found`，页面暂时禁用该选项。原 Qwen 生图模型 ID 仅保留兼容旧客户端。
 
-[图片接口文档](https://docs.aihubmix.com/cn/api/aihubmix-image-generation) · [Image 2.5 Flare](https://aihubmix.com/model/gpt-image-2.5-flare) · [Qwen3 VL Plus](https://aihubmix.com/model/qwen3-vl-plus)
+[图片接口文档](https://docs.aihubmix.com/cn/api/aihubmix-image-generation) · [Nano Banana Pro](https://aihubmix.com/model/gemini-3-pro-image) · [Image 2.5 Flare](https://aihubmix.com/model/gpt-image-2.5-flare) · [Qwen3 VL Plus](https://aihubmix.com/model/qwen3-vl-plus)
 
 若创建请求超时或中断，先去 AiHubMix 控制台检查已有任务，避免重复付费。刷新页面会丢失图片、方案与当前任务引用，后台密钥不会丢失。
 
@@ -118,7 +125,7 @@ npm test
 
 ## 效果边界
 
-识图选区是近似建议，会漏检、错位或虚构部件，请生成前人工核对。选区图给模型提供局部编辑参考；返回结果仅合成进有效选区，保护区和选区外像素从原图保留。选区边界仍需人工检查，选区内细节仍可能被模型改变。AI 可能改变家具细节；实物颜色、花纹比例和质感请以样布为准。
+识图选区是近似建议，会漏检、错位或虚构部件，请生成前人工核对。严格模式以选区图提供局部编辑参考，仅合成有效选区并保留其他原图像素；Nano Banana 智能模式直接展示整张生成图，由模型按部件语义保持非编辑结构。选区边界仍需人工检查，选区内细节仍可能被模型改变。AI 可能改变家具细节；实物颜色、花纹比例和质感请以样布为准。
 
 测试素材由 AI 生成，[提示词](public/samples/generation-prompts.md)随仓库提供。
 
@@ -128,4 +135,4 @@ npm test
 
 ## 结构保护
 
-识图另外输出可勾选的保护区域，床面承托面按原照片实际观察描述。有效编辑选区扣除保护区域；生成后仅将有效选区内的像素合成回原图，因此锁定的床板、金属边框和背景不受生成结果影响。下载和对比展示使用同一合成结果。保护边界仍需人工核对。
+识图另外输出可勾选的保护区域，床面承托面按原照片实际观察描述。严格模式的有效编辑选区扣除保护区域，生成后仅将有效选区内的像素合成回原图，因此锁定的床板、金属边框和背景不受生成结果影响。智能模式由模型遵照保护描述，无法保证像素级保持。下载和对比展示使用同一合成结果。保护边界仍需人工核对。
