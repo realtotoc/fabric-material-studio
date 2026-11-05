@@ -27,6 +27,55 @@ npm start
 
 本地每次请求重新读取 `.dev.vars` 的 AIHUBMIX_API_KEY，保存后无需重启。该文件被 Git 忽略。
 
+## Ubuntu 一键部署（交互式）
+
+适用于使用 systemd 的 Ubuntu 22.04 / 24.04 / 26.04 LTS 服务器（amd64 / arm64），需要 sudo 权限和访问 Ubuntu 软件源、GitHub、Docker Hub 的网络。脚本安装 Git、curl、证书、Docker 和 Buildx（已有 Docker 时复用），应用运行在 Node 24 容器中，无需安装宿主机 Node/npm。
+
+首次执行：
+
+```bash
+sudo apt-get update
+sudo apt-get install -y curl ca-certificates
+curl -fsSL https://raw.githubusercontent.com/realtotoc/fabric-material-studio/main/scripts/deploy-ubuntu.sh -o /tmp/fabric-deploy-ubuntu.sh
+sudo bash /tmp/fabric-deploy-ubuntu.sh
+```
+
+脚本依次询问：
+
+1. 网站访问用户名，默认 `admin`。
+2. 访问密码（至少 8 位，隐藏输入、二次确认）。
+3. AiHubMix API Key（隐藏输入）。
+4. 可选域名；输入 `-` 使用 IP 和端口。
+5. 无域名时的对外端口，默认 `4173`。
+
+有域名时，请先将 A/AAAA 记录指向服务器，并在云安全组允许 TCP 80/443（UDP 443 可选）。脚本运行 Caddy 自动申请、续期 HTTPS 证书，应用本身不对外发布额外端口。证书是否签发成功取决于 DNS 和外网端口可达性。不要填写尚未指向服务器的 IPv6 记录。
+
+无域名时访问 `http://服务器公网IP:4173`（或你填写的端口），并在云安全组放行对应 TCP 端口。HTTP 不加密登录信息，适合临时测试；正式使用建议配置域名和 HTTPS。脚本不调整 UFW/防火墙规则；[Docker 发布端口会影响宿主机防火墙的过滤方式](https://docs.docker.com/engine/network/packet-filtering-firewalls/)，请用云安全组控制公网入口。
+
+后台配置保存于 `/opt/fabric-studio/config/runtime.env`，文件权限 `600`、上级目录 `700`，密码和 Key 不写进源代码或命令行参数。脚本不使用 `source`/`eval` 读取密钥，密码中的空格、引号、`$`、`#` 等字符按原样保存。
+
+Docker 服务和应用容器配置开机自启。部署时先构建镜像、用临时容器验证健康状态、未登录返回 401、后台 Key 已配置和隐藏文件不可访问，再切换旧容器。新容器或代理启动失败时，脚本尝试恢复原容器。此检查不调用付费 AI，不验证 Key 的余额或模型权限。
+
+更新代码、修改用户名/密码或 Key：
+
+```bash
+sudo bash /opt/fabric-studio/deploy-ubuntu.sh
+```
+
+每次下载 `main` 最新代码并部署；回车可保留已有密码和 Key。更新有短暂服务中断，建议等待正在生成的任务结束后操作。脚本会拒绝覆盖同名但不属于本部署的容器，不会卸载已有 Docker 或清理其他项目。
+
+运维命令：
+
+```bash
+sudo docker logs --tail 100 -f fabric-studio
+sudo docker restart fabric-studio
+sudo docker ps --filter name=fabric-studio
+# 有域名时查看证书申请与代理日志
+sudo docker logs --tail 100 fabric-studio-proxy
+```
+
+实现：[部署脚本](scripts/deploy-ubuntu.sh)。参考：[Docker Ubuntu 安装说明](https://docs.docker.com/engine/install/ubuntu/)、[Caddy 自动 HTTPS](https://caddyserver.com/docs/automatic-https)。
+
 ## 部署到 Cloudflare Workers
 
 仓库已包含 `worker/index.mjs` 和 `wrangler.jsonc`。静态页面通过 `ASSETS` 绑定提供，AI API 在 Worker 内运行，异步任务由浏览器每 15 秒查询，无需在 Worker 内长时间等待生图。`run_worker_first: true` 确保网页、静态资源和 API 都先经过访问密码校验。
@@ -124,6 +173,8 @@ Seedream 同样支持智能整图/严格选区两种展示方式，输出约 1.5
 ```bash
 npm run build
 npm test
+# Linux 上额外验证部署脚本的输入、密钥和失败恢复逻辑
+bash scripts/test-deploy.sh
 ```
 
 已使用真实 AiHubMix 账户验证：识图、异步换布任务、轮询、结果下载、页面展示和左右对比。自动化检查覆盖后台密钥、来源校验、模型白名单、坐标格式兼容、任务结束状态、结果地址限制和不自动重复生成。
