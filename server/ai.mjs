@@ -1,3 +1,4 @@
+export const VISION_MODEL = "gemini-3.1-pro-preview";
 export const BASE = "https://aihubmix.com";
 export const SEEDREAM_MODEL = "doubao-seedream-5-0-pro-260628";
 export const MODELS = {
@@ -279,7 +280,8 @@ export async function handleApi(request, env = {}, fetcher = fetch) {
     if (path === "/api/config" && request.method === "GET")
       return json({
         configured: !!env.AIHUBMIX_API_KEY,
-        vision: "qwen3-vl-plus",
+        vision: VISION_MODEL,
+        visionLabel: "Gemini 3.1 Pro",
         models: MODELS,
       });
     if (request.method !== "POST")
@@ -315,9 +317,10 @@ export async function handleApi(request, env = {}, fetcher = fetch) {
         "/v1/chat/completions",
         key,
         {
-          model: "qwen3-vl-plus",
-          temperature: 0.1,
-          max_tokens: 4000,
+          model: VISION_MODEL,
+          temperature: 0.2,
+          max_tokens: 12000,
+          reasoning_effort: "high",
           response_format: { type: "json_object" },
           messages: [
             {
@@ -334,7 +337,7 @@ export async function handleApi(request, env = {}, fetcher = fetch) {
                     "识别这件家具所有可以换面料的可见部件。" +
                     text(b.instruction, 500),
                 },
-                { type: "image_url", image_url: { url: img, detail: "auto" } },
+                { type: "image_url", image_url: { url: img, detail: "high" } },
               ],
             },
           ],
@@ -344,7 +347,7 @@ export async function handleApi(request, env = {}, fetcher = fetch) {
       const content = d.choices?.[0]?.message?.content;
       if (typeof content !== "string")
         throw new Problem("识图未返回文字结果，请检查模型配置。", 502);
-      return json({ ...parseParts(content), usage: d.usage, model: d.model });
+      return json({ ...parseParts(content), usage: d.usage, model: d.model || VISION_MODEL });
     }
     if (path === "/api/generate") {
       if (!MODELS[b.model]) throw new Problem("请选择支持的图片模型。");

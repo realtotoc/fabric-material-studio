@@ -7,7 +7,7 @@
 ## 功能
 
 - 家具图与布料图上传，保留照片原始比例，内置 AI 生成的测试素材。
-- Qwen3 VL Plus 智能识别部件及建议选区，支持画笔修正、擦除与撤销。
+- Gemini 3.1 Pro 高细节、高推理识别部件及建议选区，支持画笔修正、擦除与撤销。
 - Nano Banana Pro、Seedream 5.0 Pro 智能图片编辑及 GPT Image 2.5 Flare 蒙版编辑，明确替换原布颜色，支持深色家具换为目标面料色。
 - 异步任务提交一次，每 15 秒查询状态，支持继续读取现有任务。
 - 原图左右对比、PNG 导出和当前页面会话内的方案保存。
@@ -96,7 +96,7 @@ docker run --rm -p 10000:10000 --env-file /path/to/private-runtime.env fabric-ma
 
 | 用途 | 模型 | 标价 |
 | --- | --- | --- |
-| 识图 | `qwen3-vl-plus` | ≤32K 输入 $0.137/M、输出 $1.37/M tokens |
+| 识图 | `gemini-3.1-pro-preview` | ≤200K 输入 $2/M、输出 $12/M tokens |
 | 精细换布 | `gemini-3-pro-image` | 输入 $2/M tokens、输出图像 $120/M tokens，文本输出另计 |
 | Seedream 换布 | `doubao-seedream-5-0-pro-260628` | ≤2.36MP 输出 $0.0428/张 + 输入 $0.00286/图 |
 | 蒙版换布 | `gpt-image-2.5-flare` | medium 图片约 $0.041–0.053/张，另计输入 token |
@@ -113,9 +113,9 @@ Seedream 5.0 Pro 使用统一异步图片接口及 **带版本号的模型 ID `d
 
 Seedream 同样支持智能整图/严格选区两种展示方式，输出约 1.5MP，双参考图估价 $0.04852/次，另计识图费用，以实际账单为准。原 Qwen 生图模型 ID 仅保留兼容旧客户端。
 
-结构保留提示词优先锁定拉扣/凹陷数量、逐行排列、非规则间距、每条缝线、拼接分区和床框轮廓，禁止重新打光、规则化拉扣或重做菱形绗缝。便宜识图只提供部件和保护区域，不将其自动推测的拉扣数量或规则网格传给编辑模型；拉扣布局以编辑模型直接观察原图为准。提示词降低结构漂移风险，无法保证逐像素或逐拉扣一致。
+结构保留提示词优先锁定拉扣/凹陷数量、逐行排列、非规则间距、每条缝线、拼接分区和床框轮廓，禁止重新打光、规则化拉扣或重做菱形绗缝。识图只提供部件和保护区域，不将其自动推测的拉扣数量或规则网格传给编辑模型；拉扣布局以编辑模型直接观察原图为准。提示词降低结构漂移风险，无法保证逐像素或逐拉扣一致。
 
-[图片接口文档](https://docs.aihubmix.com/cn/api/aihubmix-image-generation) · [Nano Banana Pro](https://aihubmix.com/model/gemini-3-pro-image) · [Seedream 5.0 Pro 版本](https://aihubmix.com/model/doubao-seedream-5-0-pro-260628) · [Image 2.5 Flare](https://aihubmix.com/model/gpt-image-2.5-flare) · [Qwen3 VL Plus](https://aihubmix.com/model/qwen3-vl-plus)
+[图片接口文档](https://docs.aihubmix.com/cn/api/aihubmix-image-generation) · [Nano Banana Pro](https://aihubmix.com/model/gemini-3-pro-image) · [Seedream 5.0 Pro 版本](https://aihubmix.com/model/doubao-seedream-5-0-pro-260628) · [Image 2.5 Flare](https://aihubmix.com/model/gpt-image-2.5-flare) · [Gemini 3.1 Pro](https://aihubmix.com/model/gemini-3.1-pro-preview)
 
 若创建请求超时或中断，先去 AiHubMix 控制台检查已有任务，避免重复付费。刷新页面会丢失图片、方案与当前任务引用，后台密钥不会丢失。
 
@@ -145,3 +145,5 @@ npm test
 ### 结构保留实测（2026-11-05）
 
 同一张蓝色软包床与浅灰布样，用增强后的结构保留提示词分别验证 Nano Banana Pro 和 `doubao-seedream-5-0-pro-260628`，两者均已完成真实异步任务。目测 Nano Banana 本次的长条分区、错位拉扣排列更接近原图；Seedream 本次的拉扣形状变化较明显。样例数量有限，不代表所有家具或每次生成都能保持一致。用户测试照片与生成结果不发布到仓库。
+
+识图已升级为 `gemini-3.1-pro-preview`，使用 `detail: high`、`reasoning_effort: high` 和 JSON 输出，输出上限 12000 tokens 以容纳推理及部件多边形。费用与等待时间高于原 Qwen VL，不自动降级或重试其他识图模型；多边形仍是近似建议。

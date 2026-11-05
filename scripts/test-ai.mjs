@@ -8,6 +8,7 @@ import {
   modelAspectRatio,
   BASE,
   SEEDREAM_MODEL,
+  VISION_MODEL,
   editPrompt,
 } from "../server/ai.mjs";
 const image = "data:image/png;base64,iVBORw0KGgo=";
@@ -136,7 +137,12 @@ r = await handleApi(
   async (url, init) => {
     assert.equal(url, BASE + "/v1/chat/completions");
     const b = JSON.parse(init.body);
-    assert.equal(b.model, "qwen3-vl-plus");
+    assert.equal(b.model, VISION_MODEL);
+    assert.equal(b.model, "gemini-3.1-pro-preview");
+    assert.equal(b.reasoning_effort, "high");
+    assert.equal(b.max_tokens, 12000);
+    assert.deepEqual(b.response_format, {type:"json_object"});
+    assert.equal(b.messages[1].content[1].image_url.detail, "high");
     return new Response(
       JSON.stringify({
         choices: [

@@ -1,4 +1,5 @@
 import { blendMaskedPixels } from "./composite.js";
+let visionLabel = "Gemini 3.1 Pro";
 let serverConfigured = false,
   aiParts = [],
   aiProtected = [],
@@ -36,7 +37,7 @@ function updateEstimate() {
 }
 function updateConnection() {
   $("#aiConnection").textContent = serverConfigured
-    ? "后台 AI 已配置"
+    ? "后台 AI 已配置 · 识图 " + visionLabel
     : "后台 AI 未配置";
   $("#serverKeyStatus").textContent = serverConfigured
     ? "后台密钥已配置，可开始识别与生成。"
@@ -225,7 +226,7 @@ async function analyze() {
   if (pendingTask)
     return aiStatus("有尚未读取的图片任务，请先读取结果或结束跟踪。", true);
   setBusy(true);
-  aiStatus("正在识别家具及可换布部件…");
+  aiStatus(visionLabel + " 正在精细识别家具及可换布部件…");
   try {
     const data = await callAI("analyze", {
       image: imageData(base),
@@ -464,6 +465,7 @@ fetch("/api/config")
   .then((r) => r.json())
   .then((d) => {
     serverConfigured = d.configured === true;
+    visionLabel = d.visionLabel || "Gemini 3.1 Pro";
     updateConnection();
   })
   .catch(() => aiStatus("AI 服务暂不可用，本地预览仍可使用。", true));
