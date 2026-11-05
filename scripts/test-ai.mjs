@@ -4,6 +4,7 @@ import {
   parseParts,
   normalizePolygon,
   generationSize,
+  modelSize,
   BASE,
 } from "../server/ai.mjs";
 const image = "data:image/png;base64,iVBORw0KGgo=";
@@ -216,3 +217,68 @@ assert.equal(generationSize(1080, 1440), "750x1000");
 assert.equal(generationSize(1500, 1050), "1000x700");
 assert.equal(generationSize(undefined, undefined), "1000x700");
 assert.throws(() => generationSize(100, 2000));
+
+const protectedResult = parseParts(
+  JSON.stringify({
+    parts: [
+      {
+        label: "床头",
+        polygon: [
+          [0, 0],
+          [20, 0],
+          [20, 20],
+        ],
+      },
+    ],
+    protected_regions: [
+      {
+        label: "黑色完整承托面",
+        description: "two solid black opaque panels",
+        polygon: [
+          [10, 30],
+          [80, 30],
+          [80, 60],
+        ],
+      },
+    ],
+  }),
+);
+assert.equal(protectedResult.protectedAreas[0].label, "黑色完整承托面");
+for (const id of ["doubao-seedream-5.0-pro", "gpt-image-2.5-flare"]) {
+  calls = [];
+  r = await handleApi(
+    req("generate", {
+      model: id,
+      image,
+      material: image,
+      guide: image,
+      editMask: image,
+      width: 960,
+      height: 1280,
+      parts: [],
+      protectedAreas: protectedResult.protectedAreas,
+    }),
+    ENV,
+    mock,
+  );
+  assert.equal(r.status, 200);
+  const b = calls[0].body;
+  assert.equal(b.model, id);
+  assert.equal(b.async, true);
+  assert.equal(b.response_format, undefined);
+  assert.match(b.prompt, /two solid black opaque panels/);
+  assert.ok(!b.prompt.includes("In a bed, protect exposed metal"));
+  if (id === "gpt-image-2.5-flare") {
+    assert.equal(b.mask, image);
+    assert.equal(b.images.length, 2);
+    assert.equal(b.extra.quality, "medium");
+  } else {
+    assert.equal(b.mask, undefined);
+    assert.equal(b.images.length, 3);
+    assert.equal(b.extra, undefined);
+  }
+  const [w, h] = b.size.split("x").map(Number);
+  assert.equal(w % 16, 0);
+  assert.equal(h % 16, 0);
+  assert.ok(w * h < 2360000);
+}

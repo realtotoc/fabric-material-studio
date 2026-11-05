@@ -1086,3 +1086,18 @@ header nav {
   border-color: #e4dece;
   color: #8b795c;
 }
+#protectedAreas {
+  margin-top: 14px;
+  padding-top: 11px;
+  border-top: 1px solid #e7e0d3;
+}
+#protectedList {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.protected-chip {
+  background: #faf3e7;
+  border-color: #e6d8bf;
+  color: #94744d;
+}

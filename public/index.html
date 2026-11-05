@@ -123,11 +123,11 @@
             <div class="ai-actions">
               <button id="analyze" class="outline">✧ 智能识别部件</button
               ><select id="imageModel" aria-label="选择 AI 图片模型">
-                <option value="qwen-image-3.0">
-                  Qwen Image 3.0 · 日常预览
+                <option value="gpt-image-2.5-flare">
+                  GPT Image 2.5 Flare · 蒙版编辑
                 </option>
-                <option value="qwen-image-3.0-pro">
-                  Qwen Image 3.0 Pro · 精细预览
+                <option value="doubao-seedream-5.0-pro" disabled>
+                  Seedream 5.0 Pro · 当前接口不可用
                 </option></select
               ><button id="generate" class="primary">生成 AI 效果 ↗</button>
             </div>
@@ -137,6 +137,10 @@
                 <button id="selectAllParts">全选 / 取消</button>
               </div>
               <div id="partsList"></div>
+              <div id="protectedAreas" hidden>
+                <div class="parts-heading">保护区域 · 保留原图</div>
+                <div id="protectedList"></div>
+              </div>
               <p class="subtle">
                 AI 轮廓是粗略建议，可用下方笔刷修正。保留木脚、金属及未选部分。
               </p>
@@ -291,16 +295,16 @@
           识别：Qwen3 VL Plus<br />输入 $0.137 / 百万 tokens，输出 $1.37 / 百万
           tokens（≤32K 档）
         </p>
-        <p>日常：Qwen Image 3.0<br />生成 $0.02535 / 张 + 输入 $0.00286 / 图</p>
+        <p>Seedream 5.0 Pro<br />≤2.36MP 生成 $0.0471/张 + 输入 $0.00286/图</p>
         <p>
-          精细：Qwen Image 3.0 Pro<br />1K 生成 $0.03572 / 张 + 输入 $0.00286 /
-          图
+          GPT Image 2.5 Flare（medium）<br />图片约
+          $0.041–0.053/张，另计输入图和文本 token
         </p>
         <small
           >当前输入最多 3 图，每次输出 1 张。显示费用是估算，不含额外文本 token
           或账户折扣，以账单为准。</small
         ><a
-          href="https://aihubmix.com/model/qwen-image-3.0"
+          href="https://aihubmix.com/model/doubao-seedream-5.0-pro"
           target="_blank"
           rel="noopener noreferrer"
           >查看官方定价 ↗</a
@@ -308,6 +312,6 @@
       </div>
     </dialog>
     <script src="app.js"></script>
-    <script src="ai.js"></script>
+    <script type="module" src="ai.js"></script>
   </body>
 </html>

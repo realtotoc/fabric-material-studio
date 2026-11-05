@@ -1,5 +1,8 @@
+import { blendMaskedPixels } from "./composite.js";
 let serverConfigured = false,
   aiParts = [],
+  aiProtected = [],
+  pendingContext = null,
   pendingTask = null,
   aiBusy = false,
   selectionEdited = false;
@@ -10,9 +13,10 @@ const aiStatus = (message, error = false) => {
 const imageData = (c) => c.toDataURL("image/jpeg", 0.9);
 function updateEstimate() {
   const m = $("#imageModel").value;
-  const p = m === "qwen-image-3.0-pro" ? 0.03572 : 0.02535;
   $("#estimate").textContent =
-    "单张约 $" + (p + 0.00286 * 3).toFixed(3) + " + 识别费";
+    m === "gpt-image-2.5-flare"
+      ? "Image 2.5 medium 约 $0.041–0.053 + 输入 token"
+      : "Seedream 单张约 $0.056 + 识别及文本费";
 }
 function updateConnection() {
   $("#aiConnection").textContent = serverConfigured
@@ -89,6 +93,8 @@ function friendlyError(e) {
 }
 window.resetAISelection = () => {
   aiParts = [];
+  aiProtected = [];
+  if ($("#protectedAreas")) $("#protectedAreas").hidden = true;
   selectionEdited = false;
   if ($("#partsPanel")) {
     $("#partsPanel").hidden = true;
@@ -99,12 +105,45 @@ window.resetAISelection = () => {
 };
 window.aiSelectionChanged = () => {
   selectionEdited = true;
-  if (!aiBusy) aiStatus("选区已手动修正；生成时将以当前红色参考区域为准。");
+  if (!aiBusy)
+    aiStatus("选区已手动修正；生成时以当前选区为准，并扣除锁定的保护区域。");
 };
 window.aiMaterialChanged = () => {
   if (!aiBusy)
     aiStatus("材质已更新。当前为本地预览，点击「生成 AI 效果」生成新搭配。");
 };
+function traceRegion(context, polygon) {
+  context.beginPath();
+  polygon.forEach(([x, y], i) =>
+    i
+      ? context.lineTo((x / 1000) * W, (y / 1000) * H)
+      : context.moveTo((x / 1000) * W, (y / 1000) * H),
+  );
+  context.closePath();
+  context.fill();
+}
+function subtractProtections(context) {
+  context.save();
+  context.globalCompositeOperation = "destination-out";
+  context.fillStyle = "#fff";
+  for (const region of aiProtected.filter((p) => p.selected))
+    traceRegion(context, region.polygon);
+  context.restore();
+}
+function effectiveMask() {
+  const c = layer(),
+    g = c.getContext("2d");
+  g.drawImage(mask, 0, 0);
+  subtractProtections(g);
+  return c;
+}
+function cloneCanvas(c) {
+  const copy = document.createElement("canvas");
+  copy.width = c.width;
+  copy.height = c.height;
+  copy.getContext("2d").drawImage(c, 0, 0);
+  return copy;
+}
 function applyParts() {
   pushHistory();
   mc.clearRect(0, 0, W, H);
@@ -120,6 +159,7 @@ function applyParts() {
     mc.fillStyle = "#fff";
     mc.fill();
   }
+  subtractProtections(mc);
   selectionEdited = false;
   maskPresent = aiParts.some((p) => p.selected);
   setTool("brush");
@@ -145,6 +185,25 @@ function showParts() {
     $("#partsList").append(label);
   }
 }
+function showProtections() {
+  $("#protectedAreas").hidden = !aiProtected.length;
+  $("#protectedList").replaceChildren();
+  for (const region of aiProtected) {
+    const label = document.createElement("label");
+    label.className = "part-chip protected-chip";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = region.selected;
+    input.onchange = () => {
+      region.selected = input.checked;
+      applyParts();
+    };
+    const span = document.createElement("span");
+    span.textContent = region.label;
+    label.append(input, span);
+    $("#protectedList").append(label);
+  }
+}
 async function analyze() {
   if (aiBusy || !needKey()) return;
   if (pendingTask)
@@ -157,7 +216,12 @@ async function analyze() {
       instruction: $("#aiInstruction").value,
     });
     aiParts = data.parts.map((p) => ({ ...p, selected: true }));
+    aiProtected = (data.protectedAreas || []).map((p) => ({
+      ...p,
+      selected: true,
+    }));
     showParts();
+    showProtections();
     if (!aiParts.length) {
       aiStatus("没有识别到可换布表面，请手动涂选，或换一张清晰照片。", true);
       return;
@@ -205,7 +269,16 @@ function guideReference() {
     g = c.getContext("2d");
   g.fillStyle = "#000";
   g.fillRect(0, 0, W, H);
-  g.drawImage(mask, 0, 0);
+  g.drawImage(effectiveMask(), 0, 0);
+  return c.toDataURL("image/png");
+}
+function editMaskReference() {
+  const c = layer(),
+    g = c.getContext("2d");
+  g.fillStyle = "#fff";
+  g.fillRect(0, 0, W, H);
+  g.globalCompositeOperation = "destination-out";
+  g.drawImage(effectiveMask(), 0, 0);
   return c.toDataURL("image/png");
 }
 function recovery() {
@@ -247,7 +320,17 @@ async function showTaskResult(task) {
     });
     aiCanvas = layer();
     const a = aiCanvas.getContext("2d");
-    a.drawImage(im, 0, 0, W, H);
+    const original = pendingContext?.base || base;
+    const selected = pendingContext?.mask || effectiveMask();
+    const generated = layer(),
+      g = generated.getContext("2d");
+    g.drawImage(im, 0, 0, W, H);
+    const pixels = blendMaskedPixels(
+      original.getContext("2d").getImageData(0, 0, W, H).data,
+      g.getImageData(0, 0, W, H).data,
+      selected.getContext("2d").getImageData(0, 0, W, H).data,
+    );
+    a.putImageData(new ImageData(pixels, W, H), 0, 0);
     setTool("");
     setView("result");
     render(false);
@@ -255,6 +338,7 @@ async function showTaskResult(task) {
       "AI 图片已返回。请核对目标布料颜色和织纹；任务完成不代表材质一定匹配，可用「左右对比」检查。",
     );
     pendingTask = null;
+    pendingContext = null;
     recovery();
     return true;
   } finally {
@@ -285,10 +369,13 @@ async function generate() {
   setTool("");
   aiStatus("正在生成 AI 换材质效果… 通常需要等待，请不要重复点击。");
   try {
+    pendingContext = { base: cloneCanvas(base), mask: effectiveMask() };
     const snapshot = {
       image: imageData(base),
       material: materialReference(),
       guide: guideReference(),
+      editMask: editMaskReference(),
+      protectedAreas: aiProtected.filter((p) => p.selected),
       model: $("#imageModel").value,
       parts: aiParts.filter((p) => p.selected),
       instruction:

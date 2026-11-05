@@ -11,7 +11,7 @@
     "start": "node server/index.mjs",
     "dev": "node --watch server/index.mjs",
     "build": "node --check server/index.mjs && node --check server/ai.mjs && node --check public/app.js && node --check public/ai.js && node --check worker/index.mjs",
-    "test": "node scripts/test-ai.mjs && node scripts/test-server.mjs && node scripts/test-worker.mjs",
+    "test": "node scripts/test-ai.mjs && node scripts/test-server.mjs && node scripts/test-worker.mjs && node scripts/test-composite.mjs",
     "dev:worker": "wrangler dev --port 8787",
     "deploy:worker": "wrangler deploy",
     "check:worker": "wrangler deploy --dry-run"
