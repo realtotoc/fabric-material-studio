@@ -7,6 +7,8 @@ import {
   modelSize,
   modelAspectRatio,
   BASE,
+  SEEDREAM_MODEL,
+  editPrompt,
 } from "../server/ai.mjs";
 const image = "data:image/png;base64,iVBORw0KGgo=";
 const req = (path, data, origin = "https://studio.example") =>
@@ -245,7 +247,7 @@ const protectedResult = parseParts(
   }),
 );
 assert.equal(protectedResult.protectedAreas[0].label, "黑色完整承托面");
-for (const id of ["doubao-seedream-5.0-pro", "gpt-image-2.5-flare"]) {
+for (const id of ["gpt-image-2.5-flare"]) {
   calls = [];
   r = await handleApi(
     req("generate", {
@@ -311,3 +313,36 @@ for (const editMode of ["semantic", "strict"]) {
   } else assert.match(payload.prompt, /BLACK AND WHITE REGION MASK/);
 }
 console.log("Nano Banana Pro checks passed: exact endpoint fields, semantic vs strict references, 2K resolution, protected structure prompt.");
+
+for (const model of [SEEDREAM_MODEL, "doubao-seedream-5.0-pro"]) {
+  for (const editMode of ["semantic", "strict"]) {
+    calls = [];
+    r = await handleApi(req("generate", {
+      model, image, material: image, guide: image, editMode, width:958, height:1278,
+      structureNotes:"Original uneven staggered tufts; copy positions from original.",
+    }), ENV, mock);
+    assert.equal(r.status, 200);
+    const payload = calls[0].body;
+    assert.equal(calls[0].url, BASE + "/ai/v1/images/generations");
+    assert.equal(payload.model, SEEDREAM_MODEL);
+    assert.equal(payload.images.length, editMode === "semantic" ? 2 : 3);
+    assert.equal(payload.async, true);
+    assert.equal(payload.mask, undefined);
+    assert.equal(payload.extra.watermark, false);
+    assert.equal(payload.extra.optimize_prompt_options.mode, "standard");
+    assert.match(payload.prompt,/Original uneven staggered tufts/);
+    assert.match(payload.prompt,/row by row/);
+    assert.match(payload.prompt,/Geometry preservation takes priority/);
+    const [w,h] = payload.size.split("x").map(Number);
+    assert.ok(w*h>=921600 && w*h<2360000);
+  }
+}
+const parsedStructure = parseParts(JSON.stringify({parts:[], structure_notes:"Uneven staggered tufts; exact count uncertain."}));
+assert.match(parsedStructure.structureNotes, /exact count uncertain/);
+for(const model of ["gemini-3-pro-image",SEEDREAM_MODEL,"gpt-image-2.5-flare"]){
+  const prompt = editPrompt({model,editMode:"semantic"});
+  assert.match(prompt,/one-for-one/);
+  assert.match(prompt,/Do not regularize an irregular layout/);
+  assert.ok(!prompt.includes("Re-render highlights"));
+}
+console.log("Seedream versioned model routing and structure-lock prompt checks passed.");

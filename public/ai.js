@@ -2,6 +2,7 @@ import { blendMaskedPixels } from "./composite.js";
 let serverConfigured = false,
   aiParts = [],
   aiProtected = [],
+  structureNotes = "",
   pendingContext = null,
   pendingTask = null,
   aiBusy = false,
@@ -13,12 +14,12 @@ const aiStatus = (message, error = false) => {
 const imageData = (c) => c.toDataURL("image/jpeg", 0.9);
 function semanticEdit() {
   return (
-    $("#imageModel").value === "gemini-3-pro-image" &&
+    ["gemini-3-pro-image", "doubao-seedream-5-0-pro-260628"].includes($("#imageModel").value) &&
     $("#editMode").value !== "strict"
   );
 }
 function updateEditMode() {
-  const nano = $("#imageModel").value === "gemini-3-pro-image";
+  const nano = ["gemini-3-pro-image", "doubao-seedream-5-0-pro-260628"].includes($("#imageModel").value);
   $("#nanoEditOptions").hidden = !nano;
   $("#editModeHint").textContent = semanticEdit()
     ? "按所选部件完整换布，减少漏色与拼接边。保护区域由 AI 遵照保留，生成后请核对床板、边框和背景。手工涂选需切换严格模式。"
@@ -31,7 +32,7 @@ function updateEstimate() {
       ? "Nano Banana Pro · 2K · 按图像 token 计费"
       : m === "gpt-image-2.5-flare"
       ? "Image 2.5 medium 约 $0.041–0.053 + 输入 token"
-      : "Seedream 单张约 $0.056 + 识别及文本费";
+      : "Seedream 约 $0.049（两张参考图）+ 识别费";
   updateEditMode();
 }
 function updateConnection() {
@@ -110,6 +111,7 @@ function friendlyError(e) {
 window.resetAISelection = () => {
   aiParts = [];
   aiProtected = [];
+  structureNotes = "";
   if ($("#protectedAreas")) $("#protectedAreas").hidden = true;
   selectionEdited = false;
   if ($("#partsPanel")) {
@@ -122,7 +124,7 @@ window.resetAISelection = () => {
 window.aiSelectionChanged = () => {
   selectionEdited = true;
   if (!aiBusy)
-    aiStatus("选区已手动修正。严格模式按当前选区生成；Nano Banana 智能模式按所选部件完整换布。");
+    aiStatus("选区已手动修正。严格模式按当前选区生成；智能整图模式按所选部件完整换布。");
 };
 window.aiMaterialChanged = () => {
   if (!aiBusy)
@@ -231,6 +233,7 @@ async function analyze() {
       image: imageData(base),
       instruction: $("#aiInstruction").value,
     });
+    structureNotes = data.structureNotes || "";
     aiParts = data.parts.map((p) => ({ ...p, selected: true }));
     aiProtected = (data.protectedAreas || []).map((p) => ({
       ...p,
@@ -400,6 +403,7 @@ async function generate() {
       material: materialReference(),
       guide: guideReference(),
       editMask: editMaskReference(),
+      structureNotes,
       protectedAreas: aiProtected.filter((p) => p.selected),
       model: $("#imageModel").value,
       editMode,
